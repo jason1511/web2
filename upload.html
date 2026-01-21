@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Upload (Hidden)</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+</head>
+<body class="page-upload">
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div class="brand">
+        <div class="brand-title">Upload</div>
+        <div class="brand-subtitle">Local importer → generates catalog entries</div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn" id="btnTheme" type="button" aria-label="Toggle theme">
+          Theme
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap section">
+    <div class="card">
+      <h1 class="h1">Select images</h1>
+      <p class="muted">
+        This page does not upload to the server. It reads files locally and generates JSON you can paste into <code>js/data.js</code>.
+      </p>
+
+      <div class="row">
+        <label class="label" for="type">Type</label>
+        <select id="type" class="input">
+          <option value="photo">Photo</option>
+          <option value="screenshot">Screenshot</option>
+        </select>
+      </div>
+
+      <div class="row" id="rowSource">
+        <label class="label" for="source">Source (game/camera)</label>
+        <input id="source" class="input" placeholder="e.g., Train Sim World 4 / Arma 3 / Pixel 7" />
+      </div>
+
+      <div class="row">
+        <label class="label" for="files">Files</label>
+        <input id="files" class="input" type="file" accept="image/*" multiple />
+      </div>
+
+      <div class="row">
+        <button class="btn primary" id="btnGenerate" type="button">Generate catalog JSON</button>
+        <button class="btn" id="btnClear" type="button">Clear</button>
+      </div>
+    </div>
+
+    <div class="grid-two section">
+      <div class="card">
+        <h2 class="h2">Preview</h2>
+        <div id="preview" class="preview-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="h2">Output (paste into <code>js/data.js</code>)</h2>
+        <textarea id="output" class="textarea" rows="18" spellcheck="false"></textarea>
+        <div class="row">
+          <button class="btn" id="btnCopy" type="button">Copy</button>
+          <span class="muted" id="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="muted section">
+      Tip: put images into <code>/images/photos</code> or <code>/images/screenshots</code> and (optionally) create smaller versions in <code>/images/thumbs</code>.
+    </p>
+  </main>
+
+  <script src="js/upload.js"></script>
+</body>
+</html>

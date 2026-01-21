@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visual Archive</title>
+
+  <meta name="description" content="A personal visual archive of photographs and game screenshots." />
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Prevent accidental indexing if you want (optional) -->
+  <!-- <meta name="robots" content="noindex,nofollow"> -->
+</head>
+
+<body class="page-home">
+  <!-- Header -->
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div class="brand">
+        <div class="brand-title">Visual Archive</div>
+        <div class="brand-subtitle">Photos & game screenshots</div>
+      </div>
+
+      <nav class="site-nav">
+        <a href="gallery.html">Gallery</a>
+        <a href="about.html">About</a>
+        <button id="btnTheme" class="btn-link" type="button" aria-label="Toggle theme">
+          Theme
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="wrap">
+    <!-- Intro block -->
+    <section class="intro section">
+      <h1 class="intro-title">
+        A curated collection of photographs and in-game screenshots.
+      </h1>
+
+      <p class="intro-text">
+        This site serves as a personal visual archive.  
+        Images are presented without commentary or ranking, accompanied only by
+        minimal contextual metadata.
+      </p>
+    </section>
+
+    <!-- Optional featured grid -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Selected images</h2>
+        <a class="section-link" href="gallery.html">View full archive →</a>
+      </div>
+
+      <div class="image-grid" id="featuredGrid">
+        <!-- Filled later via JS (or keep empty initially) -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <div class="footer-left">
+        © <span id="year"></span> · Personal visual archive
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Footer year (tiny, no framework)
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

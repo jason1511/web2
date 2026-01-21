@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gallery · Visual Archive</title>
+
+  <meta name="description" content="Browse the visual archive of photographs and game screenshots." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body class="page-gallery">
+  <!-- Header -->
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div class="brand">
+        <a href="index.html" class="brand-title">Visual Archive</a>
+        <div class="brand-subtitle">Photos & game screenshots</div>
+      </div>
+
+      <nav class="site-nav">
+        <a href="gallery.html" aria-current="page">Gallery</a>
+        <a href="about.html">About</a>
+        <button id="btnTheme" class="btn-link" type="button" aria-label="Toggle theme">Theme</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Intro -->
+    <section class="section intro">
+      <h1 class="intro-title">Gallery</h1>
+      <p class="intro-text">
+        Browse the archive. Open an image to view it with minimal contextual metadata.
+      </p>
+    </section>
+
+    <!-- Controls (keep minimal; can hide later) -->
+    <section class="section" aria-label="Gallery controls">
+      <div class="card">
+        <div class="row">
+          <label class="label" for="q">Search</label>
+          <input id="q" class="input" type="search" placeholder="Title, source, location, year…" autocomplete="off" />
+        </div>
+
+        <div class="row">
+          <label class="label" for="typeFilter">Type</label>
+          <select id="typeFilter" class="input">
+            <option value="all">All</option>
+            <option value="photo">Photos</option>
+            <option value="screenshot">Screenshots</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label class="label" for="sourceFilter">Source</label>
+          <select id="sourceFilter" class="input">
+            <option value="all">All sources</option>
+            <!-- filled by JS -->
+          </select>
+        </div>
+
+        <div class="row">
+          <label class="label" for="yearFilter">Year</label>
+          <select id="yearFilter" class="input">
+            <option value="all">All years</option>
+            <!-- filled by JS -->
+          </select>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="btnReset" type="button">Reset</button>
+          <span class="muted" id="resultCount" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grid -->
+    <section class="section" aria-label="Image grid">
+      <div class="image-grid" id="grid">
+        <!-- JS renders figures here -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Viewer Modal (hidden by default) -->
+  <div class="viewer hidden" id="viewer" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="viewer-backdrop" id="viewerBackdrop"></div>
+
+    <div class="viewer-shell" role="document">
+      <div class="viewer-top">
+        <div class="viewer-nav">
+          <button class="btn" id="btnPrev" type="button" aria-label="Previous image">←</button>
+          <button class="btn" id="btnNext" type="button" aria-label="Next image">→</button>
+        </div>
+
+        <button class="btn" id="btnClose" type="button" aria-label="Close viewer">Close ✕</button>
+      </div>
+
+      <div class="viewer-body">
+        <div class="viewer-media">
+          <img id="viewerImg" alt="" />
+        </div>
+
+        <aside class="viewer-meta" aria-label="Image metadata">
+          <div class="meta-title" id="metaTitle">—</div>
+          <div class="meta-sub" id="metaSub">—</div>
+
+          <dl class="meta-dl" id="metaDl">
+            <!-- JS fills key/value pairs -->
+          </dl>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <div class="footer-left">
+        © <span id="year"></span> · Personal visual archive
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+  <script src="js/main.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/gallery.js"></script>
+</body>
+</html>
