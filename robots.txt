@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /upload.html
+Disallow: /js/upload.js
+Disallow: /js/data.js

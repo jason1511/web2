@@ -1,0 +1,7 @@
+/upload.html
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store
+
+/js/upload.js
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store

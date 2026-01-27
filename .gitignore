@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Node / tooling (if ever added)
+node_modules/
+
+# Large images (optional – choose your policy)
+images/photos/*
+images/screenshots/*
+# Keep thumbs if you want
+!images/thumbs/.gitkeep
+
+# Local secrets
+.env
