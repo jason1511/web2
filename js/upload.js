@@ -1,7 +1,6 @@
 (() => {
   /* ============================
      Theme toggle (self-contained)
-     (upload.html doesn't include main.js)
      ============================ */
   const root = document.documentElement;
   const THEME_KEY = "va_theme";
@@ -32,7 +31,7 @@
   document.getElementById("btnTheme")?.addEventListener("click", toggleTheme);
 
   /* ============================
-     Upload importer + JSON generator
+     DOM
      ============================ */
   const elType = document.getElementById("type");
   const elSource = document.getElementById("source");
@@ -45,36 +44,13 @@
   const btnClear = document.getElementById("btnClear");
   const btnCopy = document.getElementById("btnCopy");
 
-  /** @type {{file: File, url: string, w: number, h: number, date: string}[]} */
+  /** @type {{file: File, url: string, w: number, h: number, dateISO: string}[]} */
   let selected = [];
 
+  const SIGN_ENDPOINT = "/.netlify/functions/r2-sign";
+
   function setStatus(msg) {
-    if (!elStatus) return;
-    elStatus.textContent = msg || "";
-  }
-
-  function slugify(input) {
-    const s = String(input || "").trim().toLowerCase();
-    if (!s) return "";
-    return s
-      .replace(/['"]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40);
-  }
-
-  function isoDateFromFile(file) {
-    // Use file's lastModified as best effort (works well for phone photos/screenshots)
-    const d = new Date(file.lastModified);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  function extFromName(name) {
-    const m = String(name).toLowerCase().match(/\.[a-z0-9]+$/);
-    return m ? m[0] : ".jpg";
+    if (elStatus) elStatus.textContent = msg || "";
   }
 
   function escapeForJson(str) {
@@ -84,20 +60,30 @@
       .replace(/\n/g, "\\n");
   }
 
-  function folderForType(type) {
-    return type === "screenshot" ? "images/screenshots" : "images/photos";
+  function isoDateFromFile(file) {
+    const d = new Date(file.lastModified);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  function makeId(type, dateISO, source, seq) {
-    const prefix = type === "screenshot" ? "ss" : "ph";
-    const date = dateISO || "unknown-date";
-    const s = slugify(source);
-    const n = String(seq).padStart(3, "0");
-    return s ? `${prefix}-${date}-${s}-${n}` : `${prefix}-${date}-${n}`;
+  function yearFromISO(dateISO) {
+    const y = Number(String(dateISO || "").slice(0, 4));
+    return Number.isFinite(y) ? y : new Date().getFullYear();
+  }
+
+  function stripExt(name) {
+    return String(name || "").replace(/\.[^.]+$/, "");
+  }
+
+  function cleanTitleFromFilename(name) {
+    const base = stripExt(name);
+    const cleaned = base.replace(/[_-]+/g, " ").trim();
+    return cleaned || "Untitled";
   }
 
   async function readDimensions(url) {
-    // Use Image for broad browser support
     return await new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
@@ -107,7 +93,6 @@
   }
 
   function clearAll() {
-    // Revoke object URLs
     for (const item of selected) {
       try { URL.revokeObjectURL(item.url); } catch {}
     }
@@ -125,19 +110,16 @@
     const list = Array.from(files || []);
     if (!list.length) return;
 
-    // Preview containers
-    const frag = document.createDocumentFragment();
-
-    // Build selected[] with urls
     selected = list.map((file) => ({
       file,
       url: URL.createObjectURL(file),
       w: 0,
       h: 0,
-      date: isoDateFromFile(file),
+      dateISO: isoDateFromFile(file),
     }));
 
-    // Render preview immediately
+    // Preview
+    const frag = document.createDocumentFragment();
     selected.forEach((item) => {
       const box = document.createElement("div");
       box.className = "thumb";
@@ -147,10 +129,9 @@
       box.appendChild(img);
       frag.appendChild(box);
     });
-
     if (elPreview) elPreview.appendChild(frag);
 
-    // Read dimensions
+    // Dimensions
     try {
       await Promise.all(
         selected.map(async (item) => {
@@ -165,70 +146,131 @@
     }
   }
 
-  function generateJson() {
+  async function signUpload({ type, source, filename, contentType }) {
+    const res = await fetch(SIGN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, source, filename, contentType }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Sign failed (${res.status}): ${text || res.statusText}`);
+    }
+    return await res.json(); // { key, uploadUrl, publicUrl, ... }
+  }
+
+  async function putToR2(uploadUrl, file) {
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Upload failed (${res.status}): ${text || res.statusText}`);
+    }
+  }
+
+  async function generateAndUpload() {
     if (!selected.length) {
       setStatus("No files selected.");
       return;
     }
 
-    const type = elType?.value === "screenshot" ? "screenshot" : "photo";
-    const source = (elSource?.value || "").trim() || (type === "screenshot" ? "Game" : "Phone Camera");
+    // Lock UI while running
+    btnGenerate.disabled = true;
+    btnClear.disabled = true;
 
-    // Sort by date then name for stable output
-    const items = [...selected].sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return a.file.name.localeCompare(b.file.name);
-    });
+    try {
+      const type = elType?.value === "screenshot" ? "screenshot" : "photo";
+      const source = (elSource?.value || "").trim() || (type === "screenshot" ? "Game" : "Phone Camera");
 
-    // Build entries
-    const folder = folderForType(type);
+      // Stable order
+      const items = [...selected].sort((a, b) => {
+        if (a.dateISO !== b.dateISO) return a.dateISO.localeCompare(b.dateISO);
+        return a.file.name.localeCompare(b.file.name);
+      });
 
-    const objects = items.map((item, i) => {
-      const date = item.date;
-      const year = Number(date.slice(0, 4)) || new Date().getFullYear();
+      setStatus(`Uploading ${items.length} item${items.length === 1 ? "" : "s"} to R2…`);
 
-      // Use ORIGINAL filename by default (you manually place the file into folder)
-      // You will copy file into: /images/photos or /images/screenshots
-      const ext = extFromName(item.file.name);
-      const id = makeId(type, date, source, i + 1);
+      const entries = [];
 
-      const filename = item.file.name; // keep original
-      const srcPath = `${folder}/${filename}`;
-      // Thumb optional: set to src for now so site works immediately
-      const thumbPath = srcPath;
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const file = it.file;
 
-      const resolution = item.w && item.h ? `${item.w}×${item.h}` : "";
+        setStatus(`(${i + 1}/${items.length}) Signing: ${file.name}`);
 
-      const titleFallback = (() => {
-        // base title from filename (without extension), lightly cleaned
-        const base = item.file.name.replace(/\.[^.]+$/, "");
-        return base.replace(/[_-]+/g, " ").trim() || "Untitled";
-      })();
+        const signed = await signUpload({
+          type,
+          source,
+          filename: file.name,
+          contentType: file.type || "image/jpeg",
+        });
 
-      const lines = [
-        "  {",
-        `    id: "${escapeForJson(id)}",`,
-        `    type: "${type}",`,
-        `    title: "${escapeForJson(titleFallback)}",`,
-        `    date: "${escapeForJson(date)}",`,
-        `    year: ${year},`,
-        `    source: "${escapeForJson(source)}",`,
-      ];
+        setStatus(`(${i + 1}/${items.length}) Uploading: ${file.name}`);
+        await putToR2(signed.uploadUrl, file);
 
-      // Keep location/tags out by default (you can add later)
-      if (resolution) lines.push(`    resolution: "${escapeForJson(resolution)}",`);
+        const dateISO = it.dateISO;
+        const year = yearFromISO(dateISO);
+        const resolution = it.w && it.h ? `${it.w}×${it.h}` : "";
 
-      lines.push(`    thumb: "${escapeForJson(thumbPath)}",`);
-      lines.push(`    src: "${escapeForJson(srcPath)}"`);
-      lines.push("  }");
+        // IMPORTANT:
+        // publicUrl comes from your Netlify Function (built using R2_PUBLIC_BASE_URL + key)
+        const publicUrl = signed.publicUrl;
 
-      return lines.join("\n");
-    });
+        // If you later add thumbnail generation, thumb can be a different URL.
+        const entry = {
+          id: `${type === "screenshot" ? "ss" : "ph"}-${dateISO}-${i + 1}`,
 
-    const output = objects.join(",\n");
-    if (elOutput) elOutput.value = output;
+          type,
+          title: cleanTitleFromFilename(file.name),
+          date: dateISO,
+          year,
+          source,
 
-    setStatus(`Generated ${objects.length} catalog entr${objects.length === 1 ? "y" : "ies"}.`);
+          ...(resolution ? { resolution } : {}),
+
+          thumb: publicUrl,
+          src: publicUrl,
+        };
+
+        entries.push(entry);
+      }
+
+      // Output as JS object literals (matching your data.js style)
+      const output = entries
+        .map((e) => {
+          const lines = [];
+          lines.push("  {");
+          lines.push(`    id: "${escapeForJson(e.id)}",`);
+          lines.push(`    type: "${escapeForJson(e.type)}",`);
+          lines.push(`    title: "${escapeForJson(e.title)}",`);
+          lines.push(`    date: "${escapeForJson(e.date)}",`);
+          lines.push(`    year: ${e.year},`);
+          lines.push(`    source: "${escapeForJson(e.source)}",`);
+          if (e.resolution) lines.push(`    resolution: "${escapeForJson(e.resolution)}",`);
+          lines.push(`    thumb: "${escapeForJson(e.thumb)}",`);
+          lines.push(`    src: "${escapeForJson(e.src)}"`);
+          lines.push("  }");
+          return lines.join("\n");
+        })
+        .join(",\n");
+
+      if (elOutput) elOutput.value = output;
+
+      setStatus(`Done. Uploaded ${entries.length} item${entries.length === 1 ? "" : "s"} to R2 and generated catalog entries.`);
+    } catch (err) {
+      console.error(err);
+      setStatus(err?.message || "Upload failed.");
+    } finally {
+      btnGenerate.disabled = false;
+      btnClear.disabled = false;
+    }
   }
 
   async function copyOutput() {
@@ -241,7 +283,6 @@
       await navigator.clipboard.writeText(text);
       setStatus("Copied to clipboard.");
     } catch {
-      // Fallback
       elOutput?.select();
       document.execCommand("copy");
       setStatus("Copied (fallback).");
@@ -250,7 +291,7 @@
 
   // Wire events
   elFiles?.addEventListener("change", (e) => handleFilePick(e.target.files));
-  btnGenerate?.addEventListener("click", generateJson);
+  btnGenerate?.addEventListener("click", generateAndUpload);
   btnClear?.addEventListener("click", clearAll);
   btnCopy?.addEventListener("click", copyOutput);
 })();
