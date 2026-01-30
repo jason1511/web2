@@ -38,8 +38,10 @@
 
   let selected = [];
 
-  const SIGN_ENDPOINT = "/.netlify/functions/r2-sign";
-  const CATALOG_ADD_ENDPOINT = "/.netlify/functions/catalog-add";
+const ORIGIN = window.location.origin;
+const SIGN_ENDPOINT = `${ORIGIN}/.netlify/functions/r2-sign`;
+const CATALOG_ADD_ENDPOINT = `${ORIGIN}/.netlify/functions/catalog-add`;
+
 
   function setStatus(msg) { if (elStatus) elStatus.textContent = msg || ""; }
 
