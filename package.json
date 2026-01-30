@@ -1,0 +1,10 @@
+{
+  "name": "visual-archive",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static visual archive with R2 uploads via Netlify Functions",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0"
+  }
+}
