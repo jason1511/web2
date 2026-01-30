@@ -1,7 +1,5 @@
 (() => {
-  /* ============================
-     Theme toggle (self-contained)
-     ============================ */
+  // Theme toggle (self-contained)
   const root = document.documentElement;
   const THEME_KEY = "va_theme";
 
@@ -12,27 +10,21 @@
       window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     return prefersDark ? "dark" : "light";
   }
-
   function applyTheme(theme) {
     if (theme === "dark") root.setAttribute("data-theme", "dark");
     else root.removeAttribute("data-theme");
     localStorage.setItem(THEME_KEY, theme);
-
     const btn = document.getElementById("btnTheme");
     if (btn) btn.textContent = theme === "dark" ? "Light" : "Dark";
   }
-
   function toggleTheme() {
     const current = root.getAttribute("data-theme") === "dark" ? "dark" : "light";
     applyTheme(current === "dark" ? "light" : "dark");
   }
-
   applyTheme(getPreferredTheme());
   document.getElementById("btnTheme")?.addEventListener("click", toggleTheme);
 
-  /* ============================
-     DOM
-     ============================ */
+  // DOM
   const elType = document.getElementById("type");
   const elSource = document.getElementById("source");
   const elFiles = document.getElementById("files");
@@ -44,21 +36,12 @@
   const btnClear = document.getElementById("btnClear");
   const btnCopy = document.getElementById("btnCopy");
 
-  /** @type {{file: File, url: string, w: number, h: number, dateISO: string}[]} */
   let selected = [];
 
   const SIGN_ENDPOINT = "/.netlify/functions/r2-sign";
+  const CATALOG_ADD_ENDPOINT = "/.netlify/functions/catalog-add";
 
-  function setStatus(msg) {
-    if (elStatus) elStatus.textContent = msg || "";
-  }
-
-  function escapeForJson(str) {
-    return String(str ?? "")
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, "\\n");
-  }
+  function setStatus(msg) { if (elStatus) elStatus.textContent = msg || ""; }
 
   function isoDateFromFile(file) {
     const d = new Date(file.lastModified);
@@ -73,9 +56,7 @@
     return Number.isFinite(y) ? y : new Date().getFullYear();
   }
 
-  function stripExt(name) {
-    return String(name || "").replace(/\.[^.]+$/, "");
-  }
+  function stripExt(name) { return String(name || "").replace(/\.[^.]+$/, ""); }
 
   function cleanTitleFromFilename(name) {
     const base = stripExt(name);
@@ -118,7 +99,6 @@
       dateISO: isoDateFromFile(file),
     }));
 
-    // Preview
     const frag = document.createDocumentFragment();
     selected.forEach((item) => {
       const box = document.createElement("div");
@@ -131,7 +111,6 @@
     });
     if (elPreview) elPreview.appendChild(frag);
 
-    // Dimensions
     try {
       await Promise.all(
         selected.map(async (item) => {
@@ -157,31 +136,52 @@
       const text = await res.text().catch(() => "");
       throw new Error(`Sign failed (${res.status}): ${text || res.statusText}`);
     }
-    return await res.json(); // { key, uploadUrl, publicUrl, ... }
+    return await res.json(); // { key, uploadUrl, publicUrl }
   }
 
   async function putToR2(uploadUrl, file) {
     const res = await fetch(uploadUrl, {
       method: "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
+      headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
     });
-
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Upload failed (${res.status}): ${text || res.statusText}`);
     }
   }
 
-  async function generateAndUpload() {
-    if (!selected.length) {
-      setStatus("No files selected.");
-      return;
-    }
+  async function addToCatalog(entry) {
+    const res = await fetch(CATALOG_ADD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
+    });
 
-    // Lock UI while running
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`catalog-add failed (${res.status}): ${text || res.statusText}`);
+    }
+    return await res.json(); // expected: { ok:true, item:..., count:... }
+  }
+
+  function toLiteral(entry) {
+    const lines = [];
+    lines.push("  {");
+    for (const [k, v] of Object.entries(entry)) {
+      if (typeof v === "number") lines.push(`    ${k}: ${v},`);
+      else if (Array.isArray(v)) lines.push(`    ${k}: ${JSON.stringify(v)},`);
+      else lines.push(`    ${k}: ${JSON.stringify(v)},`);
+    }
+    // remove trailing comma on last line
+    lines[lines.length - 1] = lines[lines.length - 1].replace(/,$/, "");
+    lines.push("  }");
+    return lines.join("\n");
+  }
+
+  async function generateAndUpload() {
+    if (!selected.length) { setStatus("No files selected."); return; }
+
     btnGenerate.disabled = true;
     btnClear.disabled = true;
 
@@ -189,22 +189,20 @@
       const type = elType?.value === "screenshot" ? "screenshot" : "photo";
       const source = (elSource?.value || "").trim() || (type === "screenshot" ? "Game" : "Phone Camera");
 
-      // Stable order
       const items = [...selected].sort((a, b) => {
         if (a.dateISO !== b.dateISO) return a.dateISO.localeCompare(b.dateISO);
         return a.file.name.localeCompare(b.file.name);
       });
 
-      setStatus(`Uploading ${items.length} item${items.length === 1 ? "" : "s"} to R2…`);
+      setStatus(`Uploading ${items.length} to R2…`);
 
-      const entries = [];
+      const added = [];
 
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
         const file = it.file;
 
-        setStatus(`(${i + 1}/${items.length}) Signing: ${file.name}`);
-
+        setStatus(`(${i + 1}/${items.length}) Signing… ${file.name}`);
         const signed = await signUpload({
           type,
           source,
@@ -212,58 +210,38 @@
           contentType: file.type || "image/jpeg",
         });
 
-        setStatus(`(${i + 1}/${items.length}) Uploading: ${file.name}`);
+        setStatus(`(${i + 1}/${items.length}) Uploading… ${file.name}`);
         await putToR2(signed.uploadUrl, file);
 
         const dateISO = it.dateISO;
-        const year = yearFromISO(dateISO);
-        const resolution = it.w && it.h ? `${it.w}×${it.h}` : "";
-
-        // IMPORTANT:
-        // publicUrl comes from your Netlify Function (built using R2_PUBLIC_BASE_URL + key)
-        const publicUrl = signed.publicUrl;
-
-        // If you later add thumbnail generation, thumb can be a different URL.
         const entry = {
-          id: `${type === "screenshot" ? "ss" : "ph"}-${dateISO}-${i + 1}`,
-
+          id: `${type === "screenshot" ? "ss" : "ph"}-${dateISO}-${Date.now()}-${i + 1}`,
           type,
           title: cleanTitleFromFilename(file.name),
           date: dateISO,
-          year,
+          year: yearFromISO(dateISO),
           source,
-
-          ...(resolution ? { resolution } : {}),
-
-          thumb: publicUrl,
-          src: publicUrl,
+          resolution: it.w && it.h ? `${it.w}×${it.h}` : undefined,
+          // Use the public R2 URL
+          src: signed.publicUrl,
+          thumb: signed.publicUrl
         };
 
-        entries.push(entry);
+        // Remove undefined fields
+        Object.keys(entry).forEach((k) => entry[k] === undefined && delete entry[k]);
+
+        setStatus(`(${i + 1}/${items.length}) Writing catalog…`);
+        await addToCatalog(entry);
+
+        added.push(entry);
       }
 
-      // Output as JS object literals (matching your data.js style)
-      const output = entries
-        .map((e) => {
-          const lines = [];
-          lines.push("  {");
-          lines.push(`    id: "${escapeForJson(e.id)}",`);
-          lines.push(`    type: "${escapeForJson(e.type)}",`);
-          lines.push(`    title: "${escapeForJson(e.title)}",`);
-          lines.push(`    date: "${escapeForJson(e.date)}",`);
-          lines.push(`    year: ${e.year},`);
-          lines.push(`    source: "${escapeForJson(e.source)}",`);
-          if (e.resolution) lines.push(`    resolution: "${escapeForJson(e.resolution)}",`);
-          lines.push(`    thumb: "${escapeForJson(e.thumb)}",`);
-          lines.push(`    src: "${escapeForJson(e.src)}"`);
-          lines.push("  }");
-          return lines.join("\n");
-        })
-        .join(",\n");
+      // Output what was added (for your records)
+      if (elOutput) {
+        elOutput.value = added.map(toLiteral).join(",\n");
+      }
 
-      if (elOutput) elOutput.value = output;
-
-      setStatus(`Done. Uploaded ${entries.length} item${entries.length === 1 ? "" : "s"} to R2 and generated catalog entries.`);
+      setStatus(`Done. Uploaded + published ${added.length} item${added.length === 1 ? "" : "s"}. Refresh gallery.`);
     } catch (err) {
       console.error(err);
       setStatus(err?.message || "Upload failed.");
@@ -275,13 +253,10 @@
 
   async function copyOutput() {
     const text = elOutput?.value || "";
-    if (!text.trim()) {
-      setStatus("Nothing to copy.");
-      return;
-    }
+    if (!text.trim()) { setStatus("Nothing to copy."); return; }
     try {
       await navigator.clipboard.writeText(text);
-      setStatus("Copied to clipboard.");
+      setStatus("Copied.");
     } catch {
       elOutput?.select();
       document.execCommand("copy");
@@ -289,7 +264,6 @@
     }
   }
 
-  // Wire events
   elFiles?.addEventListener("change", (e) => handleFilePick(e.target.files));
   btnGenerate?.addEventListener("click", generateAndUpload);
   btnClear?.addEventListener("click", clearAll);

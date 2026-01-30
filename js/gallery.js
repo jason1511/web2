@@ -1,5 +1,7 @@
 (() => {
-  const CATALOG = Array.isArray(window.VA_CATALOG) ? window.VA_CATALOG : [];
+  // ✅ CHANGE THIS to your public catalog URL (R2 public base + /catalog.json)
+  // Example: "https://pub-xxxx.r2.dev/catalog.json"
+  const CATALOG_URL = "/.netlify/functions/catalog-get";
 
   // --- DOM ---
   const grid = document.getElementById("grid");
@@ -22,7 +24,8 @@
   const metaDl = document.getElementById("metaDl");
 
   // --- State ---
-  let filtered = [...CATALOG];
+  let CATALOG = [];
+  let filtered = [];
   let currentIndex = -1; // index inside filtered[]
   let lastFocusEl = null;
 
@@ -40,7 +43,6 @@
   }
 
   function buildOptions(selectEl, values, placeholderText) {
-    // Keep first option (All...)
     const keepFirst = selectEl.querySelector("option");
     selectEl.innerHTML = "";
     if (keepFirst) selectEl.appendChild(keepFirst);
@@ -52,26 +54,17 @@
       selectEl.appendChild(opt);
     });
 
-    if (placeholderText) {
-      keepFirst.textContent = placeholderText;
-    }
+    if (placeholderText) keepFirst.textContent = placeholderText;
   }
 
   function formatMetaPairs(item) {
-    // Order matters: keep it consistent and factual
     const pairs = [];
-
     pairs.push(["Type", item.type === "screenshot" ? "Screenshot" : "Photo"]);
     if (item.source) pairs.push(["Source", item.source]);
     if (item.location) pairs.push(["Location", item.location]);
     if (item.date) pairs.push(["Date", item.date]);
     if (item.resolution) pairs.push(["Resolution", item.resolution]);
-
-    // Optional tags (keep minimal)
-    if (Array.isArray(item.tags) && item.tags.length) {
-      pairs.push(["Tags", item.tags.join(", ")]);
-    }
-
+    if (Array.isArray(item.tags) && item.tags.length) pairs.push(["Tags", item.tags.join(", ")]);
     return pairs;
   }
 
@@ -110,7 +103,6 @@
 
       const meta = document.createElement("p");
       meta.className = "figure-meta";
-      // Editorial: short line, factual
       const left = item.type === "screenshot" ? "Screenshot" : "Photo";
       const mid = item.source ? ` · ${item.source}` : "";
       const right = item.year ? ` · ${item.year}` : "";
@@ -145,7 +137,6 @@
 
       if (!query) return true;
 
-      // Search across a few fields
       const hay = [
         item.title,
         item.source,
@@ -170,11 +161,9 @@
 
     lastFocusEl = document.activeElement;
 
-    // Image
     viewerImg.src = item.src;
     viewerImg.alt = esc(item.title || "");
 
-    // Metadata header
     metaTitle.textContent = item.title || "Untitled";
     const subParts = [];
     subParts.push(item.type === "screenshot" ? "Screenshot" : "Photo");
@@ -182,10 +171,8 @@
     if (item.year) subParts.push(String(item.year));
     metaSub.textContent = subParts.join(" · ");
 
-    // Metadata pairs
     metaDl.innerHTML = "";
     const pairs = formatMetaPairs(item);
-
     for (const [k, v] of pairs) {
       const dt = document.createElement("dt");
       dt.textContent = k;
@@ -196,54 +183,29 @@
     }
 
     viewer.classList.remove("hidden");
-
-    // Focus management: focus close for accessibility
     btnClose?.focus();
-
-    // Update nav disabled states
     updateViewerNav();
   }
 
   function closeViewer() {
     if (!viewer) return;
     viewer.classList.add("hidden");
-
-    // Clear image to stop large memory usage on some browsers
     viewerImg.src = "";
     viewerImg.alt = "";
-
     currentIndex = -1;
 
-    if (lastFocusEl && typeof lastFocusEl.focus === "function") {
-      lastFocusEl.focus();
-    }
+    if (lastFocusEl && typeof lastFocusEl.focus === "function") lastFocusEl.focus();
   }
 
   function updateViewerNav() {
     if (!btnPrev || !btnNext) return;
-
     btnPrev.disabled = currentIndex <= 0;
     btnNext.disabled = currentIndex >= filtered.length - 1;
   }
 
-  function prevImage() {
-    if (currentIndex > 0) openViewer(currentIndex - 1);
-  }
+  function prevImage() { if (currentIndex > 0) openViewer(currentIndex - 1); }
+  function nextImage() { if (currentIndex < filtered.length - 1) openViewer(currentIndex + 1); }
 
-  function nextImage() {
-    if (currentIndex < filtered.length - 1) openViewer(currentIndex + 1);
-  }
-
-  // --- Init dropdown options ---
-  function initFilters() {
-    const sources = uniqSorted(CATALOG.map((x) => x.source));
-    const years = uniqSorted(CATALOG.map((x) => x.year)).sort((a, b) => Number(b) - Number(a));
-
-    if (sourceFilter) buildOptions(sourceFilter, sources, "All sources");
-    if (yearFilter) buildOptions(yearFilter, years, "All years");
-  }
-
-  // --- Event wiring ---
   function onGridClick(e) {
     const a = e.target.closest("a[data-index]");
     if (!a) return;
@@ -256,57 +218,80 @@
   function onKeyDown(e) {
     if (!viewer || viewer.classList.contains("hidden")) return;
 
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closeViewer();
-      return;
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      prevImage();
-      return;
-    }
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      nextImage();
-      return;
-    }
+    if (e.key === "Escape") { e.preventDefault(); closeViewer(); return; }
+    if (e.key === "ArrowLeft") { e.preventDefault(); prevImage(); return; }
+    if (e.key === "ArrowRight") { e.preventDefault(); nextImage(); return; }
   }
 
-  // --- Boot ---
-  if (!grid) return;
+  function initFilters() {
+    const sources = uniqSorted(CATALOG.map((x) => x.source));
+    const years = uniqSorted(CATALOG.map((x) => x.year)).sort((a, b) => Number(b) - Number(a));
+    if (sourceFilter) buildOptions(sourceFilter, sources, "All sources");
+    if (yearFilter) buildOptions(yearFilter, years, "All years");
+  }
 
-  initFilters();
-  renderGrid(filtered);
+  async function loadCatalog() {
+    if (!CATALOG_URL || CATALOG_URL.includes("PUT_YOUR")) {
+      throw new Error("CATALOG_URL is not set in js/gallery.js");
+    }
 
-  grid.addEventListener("click", onGridClick);
+    const res = await fetch(CATALOG_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to load catalog (${res.status})`);
+    const data = await res.json();
 
-  q?.addEventListener("input", applyFilters);
-  typeFilter?.addEventListener("change", applyFilters);
-  sourceFilter?.addEventListener("change", applyFilters);
-  yearFilter?.addEventListener("change", applyFilters);
+    // Expect { items: [...] }
+    const items = Array.isArray(data.items) ? data.items : [];
 
-  btnReset?.addEventListener("click", () => {
-    if (q) q.value = "";
-    if (typeFilter) typeFilter.value = "all";
-    if (sourceFilter) sourceFilter.value = "all";
-    if (yearFilter) yearFilter.value = "all";
-    applyFilters();
-  });
+    // Optional: newest-first if you want (comment out if you prefer no ordering)
+    items.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
-  // Viewer events
-  viewerBackdrop?.addEventListener("click", closeViewer);
-  btnClose?.addEventListener("click", closeViewer);
-  btnPrev?.addEventListener("click", prevImage);
-  btnNext?.addEventListener("click", nextImage);
-  document.addEventListener("keydown", onKeyDown);
+    return items;
+  }
 
-  // If filters change while viewer open, close it to avoid mismatch
-  const closeOnFilterChange = () => {
-    if (viewer && !viewer.classList.contains("hidden")) closeViewer();
-  };
-  q?.addEventListener("input", closeOnFilterChange);
-  typeFilter?.addEventListener("change", closeOnFilterChange);
-  sourceFilter?.addEventListener("change", closeOnFilterChange);
-  yearFilter?.addEventListener("change", closeOnFilterChange);
+  async function boot() {
+    if (!grid) return;
+
+    try {
+      CATALOG = await loadCatalog();
+    } catch (err) {
+      console.error(err);
+      grid.innerHTML = `<div class="card"><p class="muted">Failed to load catalog. Check <code>CATALOG_URL</code> and public access.</p></div>`;
+      return;
+    }
+
+    filtered = [...CATALOG];
+    initFilters();
+    renderGrid(filtered);
+
+    grid.addEventListener("click", onGridClick);
+
+    q?.addEventListener("input", applyFilters);
+    typeFilter?.addEventListener("change", applyFilters);
+    sourceFilter?.addEventListener("change", applyFilters);
+    yearFilter?.addEventListener("change", applyFilters);
+
+    btnReset?.addEventListener("click", () => {
+      if (q) q.value = "";
+      if (typeFilter) typeFilter.value = "all";
+      if (sourceFilter) sourceFilter.value = "all";
+      if (yearFilter) yearFilter.value = "all";
+      applyFilters();
+    });
+
+    viewerBackdrop?.addEventListener("click", closeViewer);
+    btnClose?.addEventListener("click", closeViewer);
+    btnPrev?.addEventListener("click", prevImage);
+    btnNext?.addEventListener("click", nextImage);
+    document.addEventListener("keydown", onKeyDown);
+
+    const closeOnFilterChange = () => {
+      if (viewer && !viewer.classList.contains("hidden")) closeViewer();
+    };
+    q?.addEventListener("input", closeOnFilterChange);
+    typeFilter?.addEventListener("change", closeOnFilterChange);
+    sourceFilter?.addEventListener("change", closeOnFilterChange);
+    yearFilter?.addEventListener("change", closeOnFilterChange);
+  }
+
+  boot();
 })();
