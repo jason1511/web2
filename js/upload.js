@@ -142,11 +142,12 @@ const CATALOG_ADD_ENDPOINT = `${ORIGIN}/.netlify/functions/catalog-add`;
   }
 
   async function putToR2(uploadUrl, file) {
-    const res = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-    });
+    await fetch(uploadUrl, {
+  method: "PUT",
+  body: file,
+  headers: { "Content-Type": file.type || "application/octet-stream" }
+});
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Upload failed (${res.status}): ${text || res.statusText}`);

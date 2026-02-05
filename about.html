@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About — Gallery</title>
+  <meta name="description" content="About this photo and screenshot archive." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html">Gallery</a>
+
+    <nav class="nav">
+      <a href="gallery.html">Gallery</a>
+      <a href="about.html" aria-current="page">About</a>
+      <button id="btnTheme" class="btn btn-ghost" type="button">Dark</button>
+    </nav>
+  </div>
+</header>
+
+<main class="container narrow">
+  <article class="card prose">
+    <h1>About this archive</h1>
+
+    <p>
+      This site is a personal archive of photographs and in-game screenshots.
+      It exists primarily as a place to collect, catalogue, and view images —
+      not as a social feed or blog.
+    </p>
+
+    <h2>What you’ll find here</h2>
+    <ul>
+      <li>Real-world photos taken casually over time</li>
+      <li>Screenshots from video games and simulations</li>
+      <li>Minimal editing, minimal curation</li>
+      <li>No algorithms, no engagement chasing</li>
+    </ul>
+
+    <h2>How it’s organised</h2>
+    <p>
+      Images are grouped and filterable by year, source, and type.
+      Metadata is kept intentionally simple so the focus stays on the image itself.
+    </p>
+
+    <h2>How it’s built</h2>
+    <p>
+      This site is intentionally lightweight.
+      Images are stored in object storage and served directly,
+      while the gallery and catalogue are rendered client-side.
+      Uploads and updates are handled through a private admin interface.
+    </p>
+
+    <p class="muted">
+      No trackers. No analytics. No social widgets.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      If you need to get in touch, email:
+      <br />
+      <strong>jasonleonard46@gmail.com</strong>
+    </p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="muted">© <span id="year"></span></p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
