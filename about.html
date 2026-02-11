@@ -1,81 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>About — Gallery</title>
-  <meta name="description" content="About this photo and screenshot archive." />
+  <title>About · Visual Archive</title>
+
+  <meta name="description" content="About this visual archive and how it is built." />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
 
-<header class="site-header">
-  <div class="container header-inner">
-    <a class="brand" href="index.html">Gallery</a>
+<body class="page-about">
+  <!-- Header (MATCHES gallery.html) -->
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div class="brand">
+        <a href="index.html" class="brand-title">Visual Archive</a>
+        <div class="brand-subtitle">Photos & game screenshots</div>
+      </div>
 
-    <nav class="nav">
-      <a href="gallery.html">Gallery</a>
-      <a href="about.html" aria-current="page">About</a>
-      <button id="btnTheme" class="btn btn-ghost" type="button">Dark</button>
-    </nav>
-  </div>
-</header>
+      <nav class="site-nav">
+        <a href="gallery.html">Gallery</a>
+        <a href="about.html" aria-current="page">About</a>
+        <button id="btnTheme" class="btn-link" type="button" aria-label="Toggle theme">Theme</button>
+      </nav>
+    </div>
+  </header>
 
-<main class="container narrow">
-  <article class="card prose">
-    <h1>About this archive</h1>
+  <main class="wrap">
+    <!-- Intro -->
+    <section class="section intro about-hero">
+      <h1 class="intro-title">About</h1>
+      <p class="intro-text">
+        A personal archive of photographs and in-game captures. Built with minimal tooling and direct object storage.
+      </p>
+    </section>
 
-    <p>
-      This site is a personal archive of photographs and in-game screenshots.
-      It exists primarily as a place to collect, catalogue, and view images —
-      not as a social feed or blog.
-    </p>
+    <!-- Cards -->
+    <section class="section" aria-label="About cards">
+      <div class="about-grid">
+        <div class="card">
+          <div class="h2">Purpose</div>
+          <p class="muted" style="margin:0;">
+            This site exists as a structured visual log — not a social feed. Each image is catalogued with metadata and stored
+            in object storage for long-term reliability.
+          </p>
+        </div>
 
-    <h2>What you’ll find here</h2>
-    <ul>
-      <li>Real-world photos taken casually over time</li>
-      <li>Screenshots from video games and simulations</li>
-      <li>Minimal editing, minimal curation</li>
-      <li>No algorithms, no engagement chasing</li>
-    </ul>
+        <div class="card">
+          <div class="h2">Technical Stack</div>
+          <ul class="meta-list">
+            <li>Static frontend (HTML / CSS / JS)</li>
+            <li>Netlify (hosting + functions)</li>
+            <li>Cloudflare R2 (object storage)</li>
+            <li>Signed URL uploads</li>
+            <li>Dynamic JSON catalog</li>
+          </ul>
+        </div>
 
-    <h2>How it’s organised</h2>
-    <p>
-      Images are grouped and filterable by year, source, and type.
-      Metadata is kept intentionally simple so the focus stays on the image itself.
-    </p>
+        <div class="card">
+          <div class="h2">Content Types</div>
+          <ul class="meta-list">
+            <li>📷 Photography (mobile / camera)</li>
+            <li>🎮 Game screenshots</li>
+          </ul>
+        </div>
 
-    <h2>How it’s built</h2>
-    <p>
-      This site is intentionally lightweight.
-      Images are stored in object storage and served directly,
-      while the gallery and catalogue are rendered client-side.
-      Uploads and updates are handled through a private admin interface.
-    </p>
+        <div class="card">
+          <div class="h2">Philosophy</div>
+          <p class="muted" style="margin:0;">
+            Minimal interface. Clear metadata. No algorithms. No engagement metrics. Just structured visual documentation.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
 
-    <p class="muted">
-      No trackers. No analytics. No social widgets.
-    </p>
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <div class="footer-left">
+        © <span id="year"></span> · Personal visual archive
+      </div>
+    </div>
+  </footer>
 
-    <h2>Contact</h2>
-    <p>
-      If you need to get in touch, email:
-      <br />
-      <strong>jasonleonard46@gmail.com</strong>
-    </p>
-  </article>
-</main>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 
-<footer class="site-footer">
-  <div class="container">
-    <p class="muted">© <span id="year"></span></p>
-  </div>
-</footer>
-
-<script src="js/main.js"></script>
-<script>
-  document.getElementById("year").textContent = new Date().getFullYear();
-</script>
-
+  <!-- Use your existing theme logic -->
+  <script src="js/main.js"></script>
 </body>
 </html>

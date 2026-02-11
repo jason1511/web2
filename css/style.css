@@ -6,6 +6,10 @@
 /* ---- Reset-ish ---- */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   line-height: 1.5;
@@ -485,4 +489,37 @@ code {
 /* Keyboard hint polish */
 .viewer button {
   white-space: nowrap;
+}
+/* =========================
+   About Page
+========================= */
+
+.about-page {
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+.about-hero {
+  margin-bottom: 2rem;
+}
+
+.about-hero h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.about-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.meta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.meta-list li {
+  padding: 0.25rem 0;
 }
